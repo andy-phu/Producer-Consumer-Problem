@@ -9,76 +9,56 @@ pthread_cond_t notempty = PTHREAD_COND_INITIALIZER;
 pthread_cond_t notfull = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-
-
-struct Producer{
-    int id;
-    int itemCount;
-    int delay;
-};
-
-struct Conumer{
-    int id;
-    int delay;
-};
-
 int itemCount = 0;
 
 void *producer(void *arg) {
-    //uses the argument given and creates a struct out of it to access delay 
-    struct Producer *producer = (struct Producer *)arg;
-
+    int *delay = (int *)arg;
+    
+    //while the buffer is full continue waiting til the notFull signal is given from the consumer 
     while (1) {
         pthread_mutex_lock(&mutex);
-        //while the buffer is full continue waiting til the notFull signal is given from the consumer 
         while (itemCount == MAX_BUFFER_SIZE) {
             pthread_cond_wait(&notfull, &mutex);
         }
-        //Produces an item and adds it to the buffer 
-        
-        //Increment itemCount
-        itemCount++;
+        //Produces an item and adds it to the buffer
+
         //Signal notempty
+        itemCount++;
         pthread_cond_signal(&notempty);
         pthread_mutex_unlock(&mutex);
 
-        //delay requested by user 
-        usleep(threadDelay->delay);
+        usleep(*delay);
     }
     return NULL;
 }
 
 void *consumer(void *arg) {
-    //uses the argument given and creates a struct out of it to access delay 
-    struct Consumer *consumer = (struct Consumer *)arg;
+    int *delay = (int *)arg;
+
     while (1) {
         pthread_mutex_lock(&mutex);
         //while there isn't anything in the buffer wait while on the notEmpty condition
         while (itemCount == 0) {
             pthread_cond_wait(&notempty, &mutex);
         }
-        //Produces an item and adds it to the buffer 
-
-        //Decrement itemCount
+        
         itemCount--;
-
         //Signal notFull after a consumption
         pthread_cond_signal(&notfull);
         pthread_mutex_unlock(&mutex);
-        //delay requested by user 
-        usleep(threadDelay->delay);
+
+        usleep(*delay);
     }
     return NULL;
 }
 
-int main(int argc, char *argv[]){
-    //grabs the 5 numbers that represent [p c i b d]
+int main(int argc, char *argv[]) {
+    // Grabs the 5 numbers that represent [p c i b d]
     int p = atoi(argv[1]);
     int c = atoi(argv[2]);
     int i = atoi(argv[3]);
     int b = atoi(argv[4]);
     int d = atoi(argv[5]);
-
 
     if (c < (p * i)){
         perror("c should be less than (p * i)");
@@ -89,23 +69,31 @@ int main(int argc, char *argv[]){
         exit(1);
     }
 
-    //initializes the struct Threads to hold the delay for the thread functions to use 
-    struct Producer producer;
-    struct Consumer consumer;
+    pthread_t producer_threads[p];
+    pthread_t consumer_threads[c];
 
-    producer.delay = d; 
-    consumer.delay = d;
+    int producer_delay = d;
+    int consumer_delay = d;
 
-    pthread_t producer_thread, consumer_thread;
-    pthread_create(&producer_thread, NULL, producer, (void *)&producer);
-    pthread_create(&consumer_thread, NULL, consumer, (void *)&consumer);
+    for (int i = 0; i < p; i++) {
+        // Create producer threads
+        pthread_create(&producer_threads[i], NULL, producer, (void *)&producer_delay);
+    }
 
-    //allocates the buffer to the size asked by the user 
-    int *buffer = (int *)malloc(b * sizeof(int)); 
+    for (int i = 0; i < c; i++) {
+        // Create consumer threads
+        pthread_create(&consumer_threads[i], NULL, consumer, (void *)&consumer_delay);
+    }
 
-    pthread_join(producer_thread, NULL);
-    pthread_join(consumer_thread, NULL);
+    for (int i = 0; i < p; i++) {
+        // Join producer threads
+        pthread_join(producer_threads[i], NULL);
+    }
 
-    free(buffer);
+    for (int i = 0; i < c; i++) {
+        // Join consumer threads
+        pthread_join(consumer_threads[i], NULL);
+    }
+
     return 0;
 }
