@@ -9,7 +9,16 @@ pthread_cond_t notempty = PTHREAD_COND_INITIALIZER;
 pthread_cond_t notfull = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-struct Threads{
+
+
+struct Producer{
+    int id;
+    int itemCount;
+    int delay;
+};
+
+struct Conumer{
+    int id;
     int delay;
 };
 
@@ -17,17 +26,18 @@ int itemCount = 0;
 
 void *producer(void *arg) {
     //uses the argument given and creates a struct out of it to access delay 
-    struct Threads *threadDelay = (struct ThreadArgs *)arg;
+    struct Producer *producer = (struct Producer *)arg;
 
     while (1) {
         pthread_mutex_lock(&mutex);
+        //while the buffer is full continue waiting til the notFull signal is given from the consumer 
         while (itemCount == MAX_BUFFER_SIZE) {
             pthread_cond_wait(&notfull, &mutex);
         }
         //Produces an item and adds it to the buffer 
-
+        
         //Increment itemCount
-
+        itemCount++;
         //Signal notempty
         pthread_cond_signal(&notempty);
         pthread_mutex_unlock(&mutex);
@@ -40,17 +50,19 @@ void *producer(void *arg) {
 
 void *consumer(void *arg) {
     //uses the argument given and creates a struct out of it to access delay 
-    struct Threads *threadDelay = (struct ThreadArgs *)arg;
+    struct Consumer *consumer = (struct Consumer *)arg;
     while (1) {
         pthread_mutex_lock(&mutex);
+        //while there isn't anything in the buffer wait while on the notEmpty condition
         while (itemCount == 0) {
             pthread_cond_wait(&notempty, &mutex);
         }
         //Produces an item and adds it to the buffer 
 
-        //Increment itemCount
+        //Decrement itemCount
+        itemCount--;
 
-        //Signal notempty
+        //Signal notFull after a consumption
         pthread_cond_signal(&notfull);
         pthread_mutex_unlock(&mutex);
         //delay requested by user 
@@ -66,12 +78,7 @@ int main(int argc, char *argv[]){
     int i = atoi(argv[3]);
     int b = atoi(argv[4]);
     int d = atoi(argv[5]);
-    //initializes the struct Threads to hold the delay for the thread functions to use 
-    struct Threads args;
-    args.delay = d; 
-    pthread_t producer_thread, consumer_thread;
-    pthread_create(&producer_thread, NULL, producer, (void *)&args);
-    pthread_create(&consumer_thread, NULL, consumer, (void *)&args);
+
 
     if (c < (p * i)){
         perror("c should be less than (p * i)");
@@ -81,6 +88,17 @@ int main(int argc, char *argv[]){
         perror("buffer has to be less than 10");
         exit(1);
     }
+
+    //initializes the struct Threads to hold the delay for the thread functions to use 
+    struct Producer producer;
+    struct Consumer consumer;
+
+    producer.delay = d; 
+    consumer.delay = d;
+
+    pthread_t producer_thread, consumer_thread;
+    pthread_create(&producer_thread, NULL, producer, (void *)&producer);
+    pthread_create(&consumer_thread, NULL, consumer, (void *)&consumer);
 
     //allocates the buffer to the size asked by the user 
     int *buffer = (int *)malloc(b * sizeof(int)); 
