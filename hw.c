@@ -11,11 +11,11 @@ pthread_cond_t notempty = PTHREAD_COND_INITIALIZER;
 pthread_cond_t notfull = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-int itemCount = 0;
+int itemsProduced = 0; //to keep track of how many items the multipe producers produced 
+int currentItemCount = 0;
 
 struct ProducerAttributes {
     int id;
-    int count; //keeps track of how many items each producer produces 
     int* buffer;
     int bufferSize;
 };
@@ -27,18 +27,16 @@ void *producer(void *arg) {
     //while the buffer is full continue waiting til the notFull signal is given from the consumer 
     while (1) {
         pthread_mutex_lock(&mutex);
-        while (itemCount == MAX_BUFFER_SIZE) {
+        while (currentItemCount == b) {
             pthread_cond_wait(&notfull, &mutex);
         }
 
         //iterate throughout to find an empty spot
         for(int i = 0; i < b;i++){
             if (producerArray->buffer[i] == -1){
-                producerArray->buffer[i] = producerArray->count;
+                producerArray->buffer[i] = itemsProduced;
                 //Produces an item and adds it to the buffer
-                itemCount++;
-                //Signal notempty
-                (producerArray->count)++;
+                itemsProduced++;
                 pthread_cond_signal(&notempty);
                 // Break the loop after placing the item in the buffer
                 break; 
@@ -47,9 +45,6 @@ void *producer(void *arg) {
 
         pthread_mutex_unlock(&mutex);
 
-        if (delay == 1){
-            usleep(500000);
-        }
     }
     return NULL;
 }
@@ -62,7 +57,7 @@ void *consumer(void *arg) {
     while (1) {
         pthread_mutex_lock(&mutex);
         //while there isn't anything in the buffer wait while on the notEmpty condition
-        while (itemCount == 0) {
+        while (currentItemCount == 0) {
             pthread_cond_wait(&notempty, &mutex);
         }
 
@@ -70,8 +65,8 @@ void *consumer(void *arg) {
         for(int i = 0; i < b;i++){
             if (producerArray->buffer[i] != -1){
                 producerArray->buffer[i] = -1; //initialize the consumed spot back to -1
-                //Produces an item and adds it to the buffer
-                itemCount--;
+                //decrement the current item count
+                currentItemCount--;
                 //Signal notFull after a consumption
                 pthread_cond_signal(&notfull);
             }
@@ -104,7 +99,7 @@ int main(int argc, char *argv[]) {
 
     //initialize buffer if the element is -1 then it's not filled 
     int *buffer = malloc(b * sizeof(int));
-    for(int i = 0; i < sizeof(buffer);i++){
+    for(int i = 0; i < b;i++){
         buffer[i] = -1; 
     }
     pthread_t producer_threads[p];
@@ -114,7 +109,6 @@ int main(int argc, char *argv[]) {
     //initialize the producer attributes
     for (int i = 0; i < p; ++i) {
         producerArray[i].id = i;
-        producerArray[i].count = 0;
         producerArray[i].buffer = buffer; // Assign the buffer to each producer so that both functions can use it 
         producerArray[i].bufferSize = b;
     }
