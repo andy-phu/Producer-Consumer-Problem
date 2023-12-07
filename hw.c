@@ -20,6 +20,7 @@ struct ProducerAttributes {
     int bufferSize;
     int itemLimit;
     int currCount; //how many items producer produces
+    int delay;
 };
 
 struct ConsumerAttributes{
@@ -30,6 +31,7 @@ struct ConsumerAttributes{
     int currCount; //how many items consumer consumed
     int pAmount;   //the p requested by the user
     int cAmount; //the c requested by user
+    int delay;
 };
 
 void *producer(void *arg) {
@@ -39,6 +41,10 @@ void *producer(void *arg) {
     int itemLimit = producerElement->itemLimit;
     //while the buffer is full continue waiting til the notFull signal is given from the consumer 
     while (1) {
+        if (producerElement->delay == 1){
+            usleep(500000);
+        } 
+
         pthread_mutex_lock(&mutex);
         while (currentItemCount == b) {
             pthread_cond_wait(&notfull, &mutex);
@@ -81,7 +87,9 @@ void *consumer(void *arg) {
 
     while (1) {
         //printf("going inside the consumer function\n");
-        usleep(500000); 
+        if(consumerElement->delay == 0){
+            usleep(500000);
+        } 
 
         pthread_mutex_lock(&mutex);
         //while there isn't anything in the buffer wait while on the notEmpty condition
@@ -162,6 +170,7 @@ int main(int argc, char *argv[]) {
         producerArray[x].bufferSize = b;
         producerArray[x].itemLimit = i;
         producerArray[x].currCount = 0;
+        producerArray[x].delay = d;
     }
 
     for (int x = 0; x < c; ++x) {
@@ -172,6 +181,7 @@ int main(int argc, char *argv[]) {
         consumerArray[x].currCount = 0;
         consumerArray[x].pAmount = p;
         consumerArray[x].cAmount = c;
+        consumerArray[x].delay = d;
     }
 
 
