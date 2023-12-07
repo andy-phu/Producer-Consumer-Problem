@@ -75,7 +75,7 @@ void *consumer(void *arg) {
     int b = consumerElement->bufferSize;
     int p = consumerElement->pAmount;
     int c = consumerElement->cAmount;
-    int i = consumerElemnet->itemLimit;
+    int i = consumerElement->itemLimit;
     int consumerID = consumerElement->id;
     while (1) {
         pthread_mutex_lock(&mutex);
@@ -84,16 +84,17 @@ void *consumer(void *arg) {
             pthread_cond_wait(&notempty, &mutex);
         }
         //checks if the amount of items consumer consued is less than or equal to (p*i)/c
-        if (currCount > ((p*i)/c)){
+        if ((consumerElement->currCount) > ((p*i)/c)){
             break;
         }
         //iterate throughout to find a filled spot
         for(int i = 0; i < b;i++){
             if (consumerElement->buffer[i] != -1){
-                consumerElement->buffer[i] = -1; //initialize the consumed spot back to -1
-
                 //prints the statement before decrementing currentItemCount
-                printf("consumer_%d consumed item %d", consumerID, buffer[i]);
+                printf("consumer_%d consumed item %d", consumerID, consumerElement->buffer[i]);
+                //initialize the consumed spot back to -1
+                consumerElement->buffer[i] = -1; 
+
                 //decrement the current item count
                 currentItemCount--;
                 //incremment the curr count to show that a consumer thread consumed another item
