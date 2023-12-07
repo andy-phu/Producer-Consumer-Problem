@@ -21,6 +21,7 @@ struct ProducerAttributes {
     int bufferSize;
     int itemLimit;
     int currCount; //how many items producer produces
+    int delay;
 };
 
 struct ConsumerAttributes{
@@ -31,6 +32,7 @@ struct ConsumerAttributes{
     int currCount; //how many items consumer consumed
     int pAmount;   //the p requested by the user
     int cAmount; //the c requested by user
+    int delay;
 };
 
 void *producer(void *arg) {
@@ -40,12 +42,17 @@ void *producer(void *arg) {
     int itemLimit = producerElement->itemLimit;
     //while the buffer is full continue waiting til the notFull signal is given from the consumer 
     while (1) {
+        if (producerElement->delay == 1){
+            usleep(500000);
+        } 
+
         pthread_mutex_lock(&mutex);
         while (currentItemCount == b) {
             pthread_cond_wait(&notfull, &mutex);
         }
         //makes sure that the producer doesn't produce another item if it has reached its produce limit
         if (producerElement->currCount == producerElement->itemLimit){
+            //printf("exiting out of producer loop\n");
             pthread_mutex_unlock(&mutex);
             break;
         }
@@ -69,6 +76,7 @@ void *producer(void *arg) {
         pthread_mutex_unlock(&mutex);
 
     }
+    
     return NULL;
 }
 
@@ -79,10 +87,12 @@ void *consumer(void *arg) {
     int c = consumerElement->cAmount;
     int i = consumerElement->itemLimit;
     int consumerID = consumerElement->id;
-
+    int flag = 0;
     while (1) {
         //printf("going inside the consumer function\n");
-        usleep(500000); 
+        if(consumerElement->delay == 0 && flag == 0){
+            usleep(500000);
+        } 
 
         pthread_mutex_lock(&mutex);
         //while there isn't anything in the buffer wait while on the notEmpty condition
@@ -90,36 +100,46 @@ void *consumer(void *arg) {
             pthread_cond_wait(&notempty, &mutex);
         }
 
+        //printf("curr count[%d]: %d\n equation: %d\n",consumerID, (consumerElement->currCount), ((p*i)/c));
         //checks if the amount of items consumer consued is less than or equal to (p*i)/c
-        if ((consumerElement->currCount) > ((p*i)/c)){
-            pthread_mutex_unlock(&mutex);
-            printf("here %d , %d", consumerElement->currCount, (p*i)/c);
-            break;
-        }
+
         //iterate throughout to find a filled spot
         for(int x = 0; x < b;x++){
             if (consumerElement->buffer[x] == totalConsumed){
                 //prints the statement before decrementing currentItemCount
                 printf("consumer_%d consumed item %d\n", consumerID, consumerElement->buffer[x]);
                 //initialize the consumed spot back to -1
-                consumerElement->buffer[x] = -1; 
-
+                for (int y = x; y < b - 1; y++) {
+                    consumerElement->buffer[y] = consumerElement->buffer[y + 1];
+                }
+                consumerElement->buffer[b - 1] = -1;
+                // if (consumerElement->buffer[x] == (p*i)){
+                //     printf("HERE\n");
+                //     flag = 1;
+                // }
                 totalConsumed++;
                 //decrement the current item count
                 currentItemCount--;
                 //incremment the curr count to show that a consumer thread consumed another item
                 (consumerElement->currCount)++;
                 //Signal notFull after a consumption
-                usleep(500000); 
                 break;
             }
         }
-
+        if ((consumerElement->currCount) > ((p*i)/c)-1){
+            pthread_mutex_unlock(&mutex);
+            //printf("here %d , %d\n", consumerElement->currCount, (p*i)/c);
+            break;
+        }
+        // printf("flag: %d\n", flag);
+        // if (flag == 1){
+        //     break;
+        // }
         pthread_cond_signal(&notfull);
         pthread_mutex_unlock(&mutex);
 
-
     }
+    //printf("exit\n");
     return NULL;
 }
 
@@ -162,6 +182,7 @@ int main(int argc, char *argv[]) {
         producerArray[x].bufferSize = b;
         producerArray[x].itemLimit = i;
         producerArray[x].currCount = 0;
+        producerArray[x].delay = d;
     }
 
     for (int x = 0; x < c; ++x) {
@@ -172,6 +193,7 @@ int main(int argc, char *argv[]) {
         consumerArray[x].currCount = 0;
         consumerArray[x].pAmount = p;
         consumerArray[x].cAmount = c;
+        consumerArray[x].delay = d;
     }
 
 
