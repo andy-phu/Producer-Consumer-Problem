@@ -13,6 +13,7 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int itemsProduced = 0; //to keep track of how many items the multipe producers produced 
 int currentItemCount = 0; //how many items are actually in the buffer 
+int totalConsumed = 0; //keep track of how many were consumed
 
 struct ProducerAttributes {
     int id;
@@ -81,6 +82,7 @@ void *consumer(void *arg) {
 
     while (1) {
         //printf("going inside the consumer function\n");
+        usleep(500000); 
 
         pthread_mutex_lock(&mutex);
         //while there isn't anything in the buffer wait while on the notEmpty condition
@@ -91,27 +93,31 @@ void *consumer(void *arg) {
         //checks if the amount of items consumer consued is less than or equal to (p*i)/c
         if ((consumerElement->currCount) > ((p*i)/c)){
             pthread_mutex_unlock(&mutex);
+            printf("here %d , %d", consumerElement->currCount, (p*i)/c);
             break;
         }
         //iterate throughout to find a filled spot
         for(int x = 0; x < b;x++){
-            if (consumerElement->buffer[x] != -1){
+            if (consumerElement->buffer[x] == totalConsumed){
                 //prints the statement before decrementing currentItemCount
                 printf("consumer_%d consumed item %d\n", consumerID, consumerElement->buffer[x]);
                 //initialize the consumed spot back to -1
                 consumerElement->buffer[x] = -1; 
 
+                totalConsumed++;
                 //decrement the current item count
                 currentItemCount--;
                 //incremment the curr count to show that a consumer thread consumed another item
                 (consumerElement->currCount)++;
                 //Signal notFull after a consumption
-                pthread_cond_signal(&notfull);
+                usleep(500000); 
+                break;
             }
         }
 
-
+        pthread_cond_signal(&notfull);
         pthread_mutex_unlock(&mutex);
+
 
     }
     return NULL;
@@ -175,17 +181,17 @@ int main(int argc, char *argv[]) {
         //printf("creating producer threads\n");
         // Create producer threads
         pthread_create(&producer_threads[x], NULL, producer, (void *)&producerArray[x]);
-        if (d == 1){
-            usleep(delay);
-        }
+        // if (d == 1){
+        //     usleep(delay);
+        // }
     }
 
     for (int x = 0; x < c; x++) {
         // Create consumer threads
         pthread_create(&consumer_threads[x], NULL, consumer, (void *)&consumerArray[x]);
-        if (d == 0){
-            usleep(delay);
-        }
+        // if (d == 0){
+        //     usleep(delay);
+        // }
     }
 
     for (int x = 0; x < p; x++) {
