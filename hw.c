@@ -101,7 +101,10 @@ void *consumer(void *arg) {
                 //prints the statement before decrementing currentItemCount
                 printf("consumer_%d consumed item %d\n", consumerID, consumerElement->buffer[x]);
                 //initialize the consumed spot back to -1
-                consumerElement->buffer[x] = -1; 
+                for (int y = x; y < b - 1; y++) {
+                    consumerElement->buffer[y] = consumerElement->buffer[y + 1];
+                }
+                consumerElement->buffer[b - 1] = -1;
 
                 //decrement the current item count
                 currentItemCount--;
