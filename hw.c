@@ -81,6 +81,7 @@ void *consumer(void *arg) {
 
     while (1) {
         //printf("going inside the consumer function\n");
+        usleep(500000); 
 
         pthread_mutex_lock(&mutex);
         //while there isn't anything in the buffer wait while on the notEmpty condition
@@ -91,6 +92,7 @@ void *consumer(void *arg) {
         //checks if the amount of items consumer consued is less than or equal to (p*i)/c
         if ((consumerElement->currCount) > ((p*i)/c)){
             pthread_mutex_unlock(&mutex);
+            printf("here %d , %d", consumerElement->currCount, (p*i)/c);
             break;
         }
         //iterate throughout to find a filled spot
@@ -106,12 +108,13 @@ void *consumer(void *arg) {
                 //incremment the curr count to show that a consumer thread consumed another item
                 (consumerElement->currCount)++;
                 //Signal notFull after a consumption
-                pthread_cond_signal(&notfull);
+                break;
             }
         }
 
-
+        pthread_cond_signal(&notfull);
         pthread_mutex_unlock(&mutex);
+
 
     }
     return NULL;
@@ -175,17 +178,17 @@ int main(int argc, char *argv[]) {
         //printf("creating producer threads\n");
         // Create producer threads
         pthread_create(&producer_threads[x], NULL, producer, (void *)&producerArray[x]);
-        if (d == 1){
-            usleep(delay);
-        }
+        // if (d == 1){
+        //     usleep(delay);
+        // }
     }
 
     for (int x = 0; x < c; x++) {
         // Create consumer threads
         pthread_create(&consumer_threads[x], NULL, consumer, (void *)&consumerArray[x]);
-        if (d == 0){
-            usleep(delay);
-        }
+        // if (d == 0){
+        //     usleep(delay);
+        // }
     }
 
     for (int x = 0; x < p; x++) {
