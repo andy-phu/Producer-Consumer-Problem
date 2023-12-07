@@ -45,12 +45,13 @@ void *producer(void *arg) {
         }
         //makes sure that the producer doesn't produce another item if it has reached its produce limit
         if (producerElement->currCount == producerElement->itemLimit){
+            pthread_mutex_unlock(&mutex);
             break;
         }
         //iterate throughout to find an empty spot
-        for(int i = 0; i < b;i++){
-            if (producerElement->buffer[i] == -1){
-                producerElement->buffer[i] = itemsProduced;
+        for(int x = 0; x < b;x++){
+            if (producerElement->buffer[x] == -1){
+                producerElement->buffer[x] = itemsProduced;
 
                 //prints the statement before incrementing currentItemCount
                 printf("producer_%d produced item %d\n", producerID, itemsProduced);
@@ -77,23 +78,28 @@ void *consumer(void *arg) {
     int c = consumerElement->cAmount;
     int i = consumerElement->itemLimit;
     int consumerID = consumerElement->id;
+
     while (1) {
+        //printf("going inside the consumer function\n");
+
         pthread_mutex_lock(&mutex);
         //while there isn't anything in the buffer wait while on the notEmpty condition
         while (currentItemCount == 0) {
             pthread_cond_wait(&notempty, &mutex);
         }
+
         //checks if the amount of items consumer consued is less than or equal to (p*i)/c
         if ((consumerElement->currCount) > ((p*i)/c)){
+            pthread_mutex_unlock(&mutex);
             break;
         }
         //iterate throughout to find a filled spot
-        for(int i = 0; i < b;i++){
-            if (consumerElement->buffer[i] != -1){
+        for(int x = 0; x < b;x++){
+            if (consumerElement->buffer[x] != -1){
                 //prints the statement before decrementing currentItemCount
-                printf("consumer_%d consumed item %d\n", consumerID, consumerElement->buffer[i]);
+                printf("consumer_%d consumed item %d\n", consumerID, consumerElement->buffer[x]);
                 //initialize the consumed spot back to -1
-                consumerElement->buffer[i] = -1; 
+                consumerElement->buffer[x] = -1; 
 
                 //decrement the current item count
                 currentItemCount--;
@@ -105,9 +111,7 @@ void *consumer(void *arg) {
         }
 
 
-
         pthread_mutex_unlock(&mutex);
-
 
     }
     return NULL;
@@ -137,60 +141,61 @@ int main(int argc, char *argv[]) {
 
     //initialize buffer if the element is -1 then it's not filled 
     int *buffer = malloc(b * sizeof(int));
-    for(int i = 0; i < b;i++){
-        buffer[i] = -1; 
+    for(int x = 0; x < b;x++){
+        buffer[x] = -1; 
     }
     pthread_t producer_threads[p];
     pthread_t consumer_threads[c];
     struct ProducerAttributes *producerArray = malloc(p * sizeof(struct ProducerAttributes));
-    struct ConsumerAttributes *consumerArray = malloc(p * sizeof(struct ConsumerAttributes));
+    struct ConsumerAttributes *consumerArray = malloc(c * sizeof(struct ConsumerAttributes));
 
     //initialize the producer attributes
-    for (int i = 0; i < p; ++i) {
-        producerArray[i].id = i;
-        producerArray[i].buffer = buffer; // Assign the buffer to each producer so that both functions can use it 
-        producerArray[i].bufferSize = b;
-        producerArray[i].itemLimit = i;
-        producerArray[i].currCount = 0;
+    for (int x = 0; x < p; ++x) {
+        producerArray[x].id = x;
+        producerArray[x].buffer = buffer; // Assign the buffer to each producer so that both functions can use it 
+        producerArray[x].bufferSize = b;
+        producerArray[x].itemLimit = i;
+        producerArray[x].currCount = 0;
     }
 
-    for (int i = 0; i < c; ++i) {
-        consumerArray[i].id = i;
-        consumerArray[i].buffer = buffer; // Assign the buffer to each producer so that both functions can use it 
-        consumerArray[i].bufferSize = b;
-        consumerArray[i].itemLimit = i;
-        consumerArray[i].currCount = 0;
-        consumerArray[i].pAmount = p;
-        consumerArray[i].cAmount = c;
+    for (int x = 0; x < c; ++x) {
+        consumerArray[x].id = x;
+        consumerArray[x].buffer = buffer; // Assign the buffer to each producer so that both functions can use it 
+        consumerArray[x].bufferSize = b;
+        consumerArray[x].itemLimit = i;
+        consumerArray[x].currCount = 0;
+        consumerArray[x].pAmount = p;
+        consumerArray[x].cAmount = c;
     }
 
 
     int delay = 500000; 
 
-    for (int i = 0; i < p; i++) {
+    for (int x = 0; x < p; x++) {
+        //printf("creating producer threads\n");
         // Create producer threads
-        pthread_create(&producer_threads[i], NULL, producer, (void *)&producerArray[i]);
+        pthread_create(&producer_threads[x], NULL, producer, (void *)&producerArray[x]);
         if (d == 1){
             usleep(delay);
         }
     }
 
-    for (int i = 0; i < c; i++) {
+    for (int x = 0; x < c; x++) {
         // Create consumer threads
-        pthread_create(&consumer_threads[i], NULL, consumer, (void *)&consumerArray[i]);
+        pthread_create(&consumer_threads[x], NULL, consumer, (void *)&consumerArray[x]);
         if (d == 0){
             usleep(delay);
         }
     }
 
-    for (int i = 0; i < p; i++) {
+    for (int x = 0; x < p; x++) {
         // Join producer threads
-        pthread_join(producer_threads[i], NULL);
+        pthread_join(producer_threads[x], NULL);
     }
 
-    for (int i = 0; i < c; i++) {
+    for (int x = 0; x < c; x++) {
         // Join consumer threads
-        pthread_join(consumer_threads[i], NULL);
+        pthread_join(consumer_threads[x], NULL);
     }
 
     free(buffer);
