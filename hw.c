@@ -53,7 +53,7 @@ void *producer(void *arg) {
                 producerElement->buffer[i] = itemsProduced;
 
                 //prints the statement before incrementing currentItemCount
-                printf("producer_%d produced item %d", producerID, itemsProduced);
+                printf("producer_%d produced item %d\n", producerID, itemsProduced);
                 //Produces an item and adds it to the buffer
                 (producerElement->currCount)++;
                 itemsProduced++;
@@ -91,7 +91,7 @@ void *consumer(void *arg) {
         for(int i = 0; i < b;i++){
             if (consumerElement->buffer[i] != -1){
                 //prints the statement before decrementing currentItemCount
-                printf("consumer_%d consumed item %d", consumerID, consumerElement->buffer[i]);
+                printf("consumer_%d consumed item %d\n", consumerID, consumerElement->buffer[i]);
                 //initialize the consumed spot back to -1
                 consumerElement->buffer[i] = -1; 
 
@@ -121,7 +121,8 @@ int main(int argc, char *argv[]) {
     int b = atoi(argv[4]);
     int d = atoi(argv[5]);
 
-    if (c < (p * i)){
+    if (c > (p * i)){
+        printf("p: %d c: %d i:%d\n", p,c,i);
         perror("c should be less than (p * i)");
         exit(1);
     }
