@@ -12,23 +12,24 @@ pthread_cond_t notfull = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int itemsProduced = 0; //to keep track of how many items the multipe producers produced 
-int currentItemCount = 0;
+int currentItemCount = 0; //how many items are actually in the buffer 
 
 struct ProducerAttributes {
     int id;
     int* buffer;
     int bufferSize;
     int itemLimit;
-    int currCount;
+    int currCount; //how many items producer produces
 };
 
 struct ConsumerAttributes{
+    int id;
     int* buffer;
     int bufferSize;
-    int itemLimit;
-    int currCount;
-    int pAmount;
-    int cAmount;
+    int itemLimit;  //the i requested by user 
+    int currCount; //how many items consumer consumed
+    int pAmount;   //the p requested by the user
+    int cAmount; //the c requested by user
 };
 
 void *producer(void *arg) {
@@ -42,14 +43,21 @@ void *producer(void *arg) {
         while (currentItemCount == b) {
             pthread_cond_wait(&notfull, &mutex);
         }
-
+        //makes sure that the producer doesn't produce another item if it has reached its produce limit
+        if (producerElement->currCount == producerElement->itemLimit){
+            break;
+        }
         //iterate throughout to find an empty spot
         for(int i = 0; i < b;i++){
             if (producerElement->buffer[i] == -1){
                 producerElement->buffer[i] = itemsProduced;
+
+                //prints the statement before incrementing currentItemCount
+                printf("producer_%d produced item %d", producerID, itemsProduced);
                 //Produces an item and adds it to the buffer
                 (producerElement->currCount)++;
                 itemsProduced++;
+                currentItemCount++;
                 pthread_cond_signal(&notempty);
                 // Break the loop after placing the item in the buffer
                 break; 
@@ -57,9 +65,7 @@ void *producer(void *arg) {
         }
 
         pthread_mutex_unlock(&mutex);
-        if (producerElement->currCount == producerElement->itemLimit){
-            break;
-        }
+
     }
     return NULL;
 }
@@ -69,29 +75,36 @@ void *consumer(void *arg) {
     int b = consumerElement->bufferSize;
     int p = consumerElement->pAmount;
     int c = consumerElement->cAmount;
-
+    int i = consumerElemnet->itemLimit;
+    int consumerID = consumerElement->id;
     while (1) {
         pthread_mutex_lock(&mutex);
         //while there isn't anything in the buffer wait while on the notEmpty condition
         while (currentItemCount == 0) {
             pthread_cond_wait(&notempty, &mutex);
         }
-
+        //checks if the amount of items consumer consued is less than or equal to (p*i)/c
+        if (currCount > ((p*i)/c)){
+            break;
+        }
         //iterate throughout to find a filled spot
         for(int i = 0; i < b;i++){
             if (consumerElement->buffer[i] != -1){
                 consumerElement->buffer[i] = -1; //initialize the consumed spot back to -1
+
+                //prints the statement before decrementing currentItemCount
+                printf("consumer_%d consumed item %d", consumerID, buffer[i]);
                 //decrement the current item count
                 currentItemCount--;
+                //incremment the curr count to show that a consumer thread consumed another item
+                (consumerElement->currCount)++;
                 //Signal notFull after a consumption
                 pthread_cond_signal(&notfull);
             }
         }
 
 
-        if (c == ((p*itemsProduced)/c)){
-            break;
-        }
+
         pthread_mutex_unlock(&mutex);
 
 
@@ -140,6 +153,7 @@ int main(int argc, char *argv[]) {
     }
 
     for (int i = 0; i < c; ++i) {
+        consumerArray[i].id = i;
         consumerArray[i].buffer = buffer; // Assign the buffer to each producer so that both functions can use it 
         consumerArray[i].bufferSize = b;
         consumerArray[i].itemLimit = i;
